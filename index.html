@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>DM</title>
+<style>
+:root{--ink:#262626;--muted:#8e8e8e;--line:#efefef;--blue:#3797f0;--bg:#fff;--bubble:#efefef}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;color:var(--ink);background:#fafafa}
+button,input,textarea{font:inherit}button{cursor:pointer}
+.app{height:100dvh;max-width:620px;margin:0 auto;background:var(--bg);display:flex;flex-direction:column;box-shadow:0 0 30px #00000008;overflow:hidden}
+.topbar{height:62px;flex-shrink:0;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 15px;gap:13px;background:#fff;z-index:2}
+.back{border:0;background:none;font-size:25px;padding:4px 5px 4px 0;color:#262626}
+.avatar{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;flex-shrink:0;background:linear-gradient(135deg,#f9ce34,#ee2a7b,#6228d7);padding:2px}
+.avatar span{width:100%;height:100%;border-radius:50%;display:grid;place-items:center;background:#fff;font-weight:700;font-size:13px;color:#555}
+.headinfo{min-width:0;flex:1}.name{font-weight:650;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.status{font-size:11px;color:var(--muted);margin-top:3px}
+.iconbtn{border:0;background:none;font-size:22px;padding:7px;color:#262626}
+.profile{padding:25px 16px 20px;text-align:center;border-bottom:1px solid var(--line)}
+.bigavatar{width:82px;height:82px;border-radius:50%;margin:0 auto 11px;padding:3px;background:linear-gradient(135deg,#f9ce34,#ee2a7b,#6228d7)}
+.bigavatar span{width:100%;height:100%;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:25px;font-weight:700;color:#555}
+.profile h2{font-size:14px;margin:0 0 5px}.profile p{font-size:12px;color:var(--muted);margin:0;line-height:1.5}
+.chat{flex:1;overflow-y:auto;padding:18px 15px 22px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}
+.date{text-align:center;font-size:10px;color:#a8a8a8;margin:5px 0 12px}
+.row{display:flex;align-items:flex-end;gap:7px;max-width:86%;animation:pop .16s ease-out}.row.me{align-self:flex-end;flex-direction:row-reverse}.row.bot{align-self:flex-start}
+.miniavatar{width:25px;height:25px;border-radius:50%;background:#f2e9ef;display:grid;place-items:center;font-size:10px;font-weight:700;color:#777;flex-shrink:0}
+.bubble{padding:11px 14px;border-radius:20px;background:var(--bubble);font-size:14px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.me .bubble{background:linear-gradient(135deg,#3797f0,#7b61ff);color:#fff;border-bottom-right-radius:6px}
+.bot .bubble{border-bottom-left-radius:6px}
+.time{font-size:9px;color:#b0b0b0;margin:0 5px 3px;align-self:flex-end}
+.typing{display:flex;gap:4px;padding:14px 16px}.typing i{width:5px;height:5px;border-radius:50%;background:#999;animation:bounce .8s infinite alternate}.typing i:nth-child(2){animation-delay:.2s}.typing i:nth-child(3){animation-delay:.4s}
+.composer-wrap{border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:#fff;flex-shrink:0}
+.composer{display:flex;align-items:flex-end;gap:8px;border:1px solid #dbdbdb;border-radius:25px;padding:6px 7px 6px 15px;min-height:44px}
+#message{flex:1;resize:none;border:0;outline:0;max-height:110px;min-height:28px;padding:6px 0;background:transparent;font-size:14px;line-height:1.4;color:var(--ink)}
+#message::placeholder{color:#aaa}
+.send{border:0;border-radius:22px;background:var(--blue);color:white;font-size:13px;font-weight:650;padding:9px 15px;min-width:55px}.send:disabled{opacity:.4}
+.bottomhint{text-align:center;font-size:10px;color:#b4b4b4;padding-top:7px}
+.empty{margin:auto;text-align:center;color:#999;font-size:13px;line-height:1.7}
+.notice{margin:8px auto;padding:8px 12px;background:#fff8e7;border:1px solid #f5e5b9;border-radius:10px;font-size:11px;color:#8c6b24;line-height:1.5;max-width:95%}
+.modalback{position:fixed;inset:0;background:#0007;display:none;align-items:flex-end;justify-content:center;z-index:5}.modalback.open{display:flex}
+.modal{width:min(620px,100%);background:white;border-radius:18px 18px 0 0;padding:20px 18px calc(22px + env(safe-area-inset-bottom));max-height:85dvh;overflow:auto}
+.modal h3{margin:0 0 6px;font-size:17px}.modal p{font-size:12px;color:#888;line-height:1.5;margin:0 0 16px}
+.field{display:block;font-size:12px;font-weight:650;margin:13px 0 6px}.modal input,.modal textarea{width:100%;border:1px solid #ddd;border-radius:10px;padding:11px;font-size:13px;outline-color:var(--blue)}.modal textarea{min-height:90px;resize:vertical}
+.actions{display:flex;gap:8px;margin-top:17px}.actions button{flex:1;border:0;border-radius:10px;padding:12px;font-weight:650}.save{background:#262626;color:#fff}.cancel{background:#f2f2f2;color:#333}
+@keyframes bounce{to{transform:translateY(-4px);opacity:.45}}@keyframes pop{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media(min-width:621px){body{padding:18px 0}.app{height:calc(100dvh - 36px);border:1px solid #eee;border-radius:12px}.modalback{align-items:center}.modal{border-radius:18px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <button class="back" aria-label="뒤로">‹</button>
+    <div class="avatar"><span id="headInitial">?</span></div>
+    <div class="headinfo"><div class="name" id="headName">캐릭터 이름</div><div class="status" id="headStatus">활동 중</div></div>
+    <button class="iconbtn" id="profileBtn" aria-label="프로필 설정">ⓘ</button>
+    <button class="iconbtn" id="moreBtn" aria-label="메뉴">⋯</button>
+  </header>
+  <section class="profile">
+    <div class="bigavatar"><span id="bigInitial">?</span></div>
+    <h2 id="profileName">캐릭터 이름</h2>
+    <p id="profileBio">당신이 대화하고 싶은 캐릭터</p>
+    <p>Instagram 대화 스타일</p>
+  </section>
+  <main class="chat" id="chat">
+    <div class="date">메시지</div>
+    <div class="empty" id="welcome">아직 대화가 없어.<br>첫 메시지를 보내 봐!</div>
+  </main>
+  <div class="composer-wrap">
+    <form class="composer" id="form">
+      <textarea id="message" rows="1" placeholder="메시지 보내기..." autocomplete="off"></textarea>
+      <button class="send" id="send" type="submit">보내기</button>
+    </form>
+    <div class="bottomhint">대화 내용은 이 기기에 자동 저장돼</div>
+  </div>
+</div>
+<div class="modalback" id="modalBack">
+  <section class="modal">
+    <h3>대화 설정</h3>
+    <p>캐릭터 정보와 AI 서버 주소를 설정할 수 있어. API 키는 여기에 입력하지 마.</p>
+    <label class="field" for="cfgName">캐릭터 이름</label><input id="cfgName" maxlength="30" placeholder="예: 에이든">
+    <label class="field" for="cfgBio">프로필 한 줄 소개</label><input id="cfgBio" maxlength="80" placeholder="예: 말수가 적고 무심한 성격">
+    <label class="field" for="cfgApi">AI 서버 주소</label><input id="cfgApi" type="url" placeholder="https://your-worker.workers.dev/chat">
+    <label class="field" for="cfgPrompt">캐릭터 성격 / 말투 / 설정</label><textarea id="cfgPrompt" placeholder="캐릭터의 성격, 말투, 관계, 배경 등을 적어 줘."></textarea>
+    <div class="actions"><button class="cancel" id="closeModal" type="button">닫기</button><button class="save" id="saveConfig" type="button">저장</button></div>
+  </section>
+</div>
+<script>
+const DEFAULTS={name:"캐릭터 이름",bio:"당신이 대화하고 싶은 캐릭터",api:"",prompt:"아직 캐릭터 설정이 입력되지 않았습니다. 사용자가 설정을 입력하기 전에는 캐릭터의 과거나 관계를 임의로 지어내지 말고, 자연스럽게 대화를 시작하세요."};
+const CONFIG_KEY="dm_character_config_v1";
+const HISTORY_KEY="dm_character_history_v1";
+let config={...DEFAULTS,...JSON.parse(localStorage.getItem(CONFIG_KEY)||"{}")};
+let history=JSON.parse(localStorage.getItem(HISTORY_KEY)||"[]");
+let busy=false;
+const $=id=>document.getElementById(id);
+function initial(){return (config.name||"?").trim().slice(0,1)||"?";}
+function applyConfig(){
+ $("headName").textContent=config.name;$("profileName").textContent=config.name;
+ $("headInitial").textContent=initial();$("bigInitial").textContent=initial();
+ $("profileBio").textContent=config.bio;$("cfgName").value=config.name;
+ $("cfgBio").value=config.bio;$("cfgApi").value=config.api;$("cfgPrompt").value=config.prompt;
+}
+function saveHistory(){localStorage.setItem(HISTORY_KEY,JSON.stringify(history));}
+function clock(){return new Intl.DateTimeFormat("ko-KR",{hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date());}
+function addMessage(role,content,time=clock(),persist=true){
+ $("welcome")?.remove();
+ const row=document.createElement("div");row.className="row "+(role==="user"?"me":"bot");
+ if(role!=="user"){const av=document.createElement("div");av.className="miniavatar";av.textContent=initial();row.appendChild(av);}
+ const bubble=document.createElement("div");bubble.className="bubble";bubble.textContent=content;row.appendChild(bubble);
+ const stamp=document.createElement("span");stamp.className="time";stamp.textContent=time;row.appendChild(stamp);
+ $("chat").appendChild(row);$("chat").scrollTop=$("chat").scrollHeight;
+ if(persist){history.push({role:role==="user"?"user":"assistant",content,time});saveHistory();}
+}
+function renderHistory(){
+ if(!history.length)return;
+ $("welcome")?.remove();
+ history.forEach(m=>addMessage(m.role==="user"?"user":"assistant",m.content,m.time,false));
+}
+function showTyping(){
+ const row=document.createElement("div");row.className="row bot";row.id="typing";
+ const av=document.createElement("div");av.className="miniavatar";av.textContent=initial();
+ const bubble=document.createElement("div");bubble.className="bubble typing";bubble.innerHTML="<i></i><i></i><i></i>";
+ row.append(av,bubble);$("chat").appendChild(row);$("chat").scrollTop=$("chat").scrollHeight;
+}
+function setBusy(v){busy=v;$("send").disabled=v;$("message").disabled=v;$("headStatus").textContent=v?"메시지 작성 중...":"활동 중";}
+async function sendMessage(text){
+ if(busy||!text.trim())return;
+ const content=text.trim();addMessage("user",content);$("message").value="";$("message").style.height="auto";
+ if(!config.api){addMessage("assistant","아직 AI 서버가 연결되지 않았어. 오른쪽 위 ⓘ에서 서버 주소를 설정하면 대화를 시작할 수 있어!");return;}
+ setBusy(true);showTyping();
+ try{
+  const response=await fetch(config.api,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:content,history:history.slice(-24).filter(m=>m.role!=="system"),character:{name:config.name,bio:config.bio,prompt:config.prompt}})});
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.error||"서버 응답 오류 ("+response.status+")");
+  const answer=data.reply||data.message||data.choices?.[0]?.message?.content;
+  if(!answer)throw new Error("AI 답변을 받지 못했어.");
+  $("typing")?.remove();addMessage("assistant",answer);
+ }catch(err){
+  $("typing")?.remove();addMessage("assistant","연결에 실패했어: "+err.message);
+ }finally{setBusy(false);$("message").focus();}
+}
+$("form").addEventListener("submit",e=>{e.preventDefault();sendMessage($("message").value);});
+$("message").addEventListener("input",e=>{e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,110)+"px";});
+function openSettings(){$("modalBack").classList.add("open");}
+$("profileBtn").onclick=openSettings;$("moreBtn").onclick=()=>{if(confirm("대화 기록을 모두 지울까?")){history=[];saveHistory();$("chat").innerHTML='<div class="date">메시지</div><div class="empty" id="welcome">대화 기록을 지웠어.<br>새로운 대화를 시작해 봐!</div>';}}
+$("closeModal").onclick=()=>$("modalBack").classList.remove("open");
+$("modalBack").addEventListener("click",e=>{if(e.target===$("modalBack"))$("modalBack").classList.remove("open");});
+$("saveConfig").onclick=()=>{
+ config={name:$("cfgName").value.trim()||DEFAULTS.name,bio:$("cfgBio").value.trim()||DEFAULTS.bio,api:$("cfgApi").value.trim().replace(/\/$/,""),prompt:$("cfgPrompt").value.trim()||DEFAULTS.prompt};
+ localStorage.setItem(CONFIG_KEY,JSON.stringify(config));applyConfig();$("modalBack").classList.remove("open");
+};
+applyConfig();renderHistory();
+</script>
+</body>
+</html>

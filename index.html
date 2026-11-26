@@ -28,6 +28,7 @@ button,input,textarea{font:inherit}button{cursor:pointer}
 .me .bubble{background:linear-gradient(135deg,#3797f0,#7b61ff);color:#fff;border-bottom-right-radius:6px}
 .bot .bubble{border-bottom-left-radius:6px}
 .time{font-size:9px;color:#b0b0b0;margin:0 5px 3px;align-self:flex-end}
+.delete-msg{border:0;background:transparent;color:#b8b8b8;font-size:15px;line-height:1;padding:4px 2px;margin:0 0 1px;align-self:flex-end;opacity:.75}.delete-msg:active{color:#e45b65;transform:scale(.92)}
 .typing{display:flex;gap:4px;padding:14px 16px}.typing i{width:5px;height:5px;border-radius:50%;background:#999;animation:bounce .8s infinite alternate}.typing i:nth-child(2){animation-delay:.2s}.typing i:nth-child(3){animation-delay:.4s}
 .composer-wrap{border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:#fff;flex-shrink:0}
 .composer{display:flex;align-items:flex-end;gap:8px;border:1px solid #dbdbdb;border-radius:25px;padding:6px 7px 6px 15px;min-height:44px}
@@ -139,19 +140,22 @@ function applyConfig(){
 }
 function saveHistory(){localStorage.setItem(HISTORY_KEY,JSON.stringify(history));}
 function clock(){return new Intl.DateTimeFormat("ko-KR",{hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date());}
-function addMessage(role,content,time=clock(),persist=true){
+function addMessage(role,content,time=clock(),persist=true,historyIndex=null){
  $("welcome")?.remove();
+ if(persist){history.push({role:role==="user"?"user":"assistant",content,time});historyIndex=history.length-1;saveHistory();}
  const row=document.createElement("div");row.className="row "+(role==="user"?"me":"bot");
  if(role!=="user"){const av=document.createElement("div");av.className="miniavatar";av.textContent="";row.appendChild(av);}
  const bubble=document.createElement("div");bubble.className="bubble";bubble.textContent=content;row.appendChild(bubble);
  const stamp=document.createElement("span");stamp.className="time";stamp.textContent=time;row.appendChild(stamp);
+ const del=document.createElement("button");del.type="button";del.className="delete-msg";del.textContent="×";del.title="이 메시지 삭제";del.setAttribute("aria-label","이 메시지 삭제");
+ del.addEventListener("click",()=>{if(confirm("이 메시지만 삭제할까?")){history.splice(historyIndex,1);saveHistory();renderHistory();}});
+ row.appendChild(del);
  $("chat").appendChild(row);$("chat").scrollTop=$("chat").scrollHeight;
- if(persist){history.push({role:role==="user"?"user":"assistant",content,time});saveHistory();}
 }
 function renderHistory(){
- if(!history.length)return;
- $("welcome")?.remove();
- history.forEach(m=>addMessage(m.role==="user"?"user":"assistant",m.content,m.time,false));
+ $("chat").innerHTML='<div class="date">메시지</div>';
+ if(!history.length){$("chat").insertAdjacentHTML("beforeend",'<div class="empty" id="welcome">아직 대화가 없어.<br>첫 메시지를 보내 봐!</div>');return;}
+ history.forEach((m,index)=>addMessage(m.role==="user"?"user":"assistant",m.content,m.time,false,index));
 }
 function showTyping(){
  const row=document.createElement("div");row.className="row bot";row.id="typing";

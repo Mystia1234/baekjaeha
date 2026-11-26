@@ -51,13 +51,13 @@ button,input,textarea{font:inherit}button{cursor:pointer}
   <header class="topbar">
     <button class="back" aria-label="뒤로">‹</button>
     <div class="avatar"><img src="1795535148960.png" alt="백재 프로필 사진"></div>
-    <div class="headinfo"><div class="name" id="headName">백재</div><div class="status" id="headStatus">활동 중</div></div>
+    <div class="headinfo"><div class="name" id="headName">백재하</div><div class="status" id="headStatus">활동 중</div></div>
     <button class="iconbtn" id="profileBtn" aria-label="프로필 설정">ⓘ</button>
     <button class="iconbtn" id="moreBtn" aria-label="메뉴">⋯</button>
   </header>
   <section class="profile">
     <div class="bigavatar"><img src="1795535148960.png" alt="백재 프로필 사진"></div>
-    <h2 id="profileName">백재</h2>
+    <h2 id="profileName">백재하</h2>
     <p id="profileBio">당신이 대화하고 싶은 캐릭터</p>
     <p>Instagram 대화 스타일</p>
   </section>
@@ -85,11 +85,11 @@ button,input,textarea{font:inherit}button{cursor:pointer}
   </section>
 </div>
 <script>
-const DEFAULTS={name:"백재",bio:"당신이 대화하고 싶은 캐릭터",api:"",prompt:"아직 캐릭터 설정이 입력되지 않았습니다. 사용자가 설정을 입력하기 전에는 캐릭터의 과거나 관계를 임의로 지어내지 말고, 자연스럽게 대화를 시작하세요."};
+const DEFAULTS={name:"백재하",bio:"당신이 대화하고 싶은 캐릭터",api:"",prompt:"아직 캐릭터 설정이 입력되지 않았습니다. 사용자가 설정을 입력하기 전에는 캐릭터의 과거나 관계를 임의로 지어내지 말고, 자연스럽게 대화를 시작하세요."};
 const CONFIG_KEY="dm_character_config_v1";
 const HISTORY_KEY="dm_character_history_v1";
 let config={...DEFAULTS,...JSON.parse(localStorage.getItem(CONFIG_KEY)||"{}")};
-if(!config.name||config.name==="캐릭터 이름"){config.name="백재";localStorage.setItem(CONFIG_KEY,JSON.stringify(config));}
+if(!config.name||config.name==="캐릭터 이름"){config.name="백재하";localStorage.setItem(CONFIG_KEY,JSON.stringify(config));}
 let history=JSON.parse(localStorage.getItem(HISTORY_KEY)||"[]");
 let busy=false;
 const $=id=>document.getElementById(id);

@@ -79,7 +79,7 @@ button,input,textarea{font:inherit}button{cursor:pointer}
     <p>여기서 API 주소, 모델, 키까지 한 번에 설정해. 키는 이 브라우저에만 저장돼.</p>
     <label class="field" for="cfgName">캐릭터 이름</label><input id="cfgName" maxlength="30" placeholder="예: 에이든">
     <label class="field" for="cfgBio">프로필 한 줄 소개</label><input id="cfgBio" maxlength="80" placeholder="예: 말수가 적고 무심한 성격">
-    <label class="field" for="cfgApi">API 주소</label><input id="cfgApi" type="url" placeholder="https://api.openai.com/v1/chat/completions"><label class="field" for="cfgModel">모델 이름</label><input id="cfgModel" placeholder="gpt-4o-mini"><label class="field" for="cfgKey">API 키</label><input id="cfgKey" type="password" autocomplete="off" placeholder="API 키 입력">
+    <label class="field" for="cfgApi">API 주소</label><input id="cfgApi" type="url" placeholder="https://openrouter.ai/api/v1/chat/completions"><label class="field" for="cfgModel">모델 이름</label><input id="cfgModel" placeholder="openai/gpt-5.6-terra"><label class="field" for="cfgKey">API 키</label><input id="cfgKey" type="password" autocomplete="off" placeholder="OpenRouter 키 (sk-or-v1-...)">
     <label class="field" for="cfgPrompt">캐릭터 성격 / 말투 / 설정</label><textarea id="cfgPrompt" placeholder="캐릭터의 성격, 말투, 관계, 배경 등을 적어 줘."></textarea>
     <div class="actions"><button class="cancel" id="openRuleEditor" type="button">시스템 규칙 편집</button><button class="cancel" id="closeModal" type="button">닫기</button><button class="save" id="saveConfig" type="button">저장</button></div>
   </section>
@@ -94,7 +94,7 @@ button,input,textarea{font:inherit}button{cursor:pointer}
   </section>
 </div>
 <script>
-const DEFAULTS={name:"백재하",bio:"당신이 대화하고 싶은 캐릭터",api:"https://api.openai.com/v1/chat/completions",model:"gpt-4o-mini",apiKey:"",prompt:"아직 캐릭터 설정이 입력되지 않았습니다. 사용자가 설정을 입력하기 전에는 캐릭터의 과거나 관계를 임의로 지어내지 말고, 자연스럽게 대화를 시작하세요."};
+const DEFAULTS={name:"백재하",bio:"당신이 대화하고 싶은 캐릭터",api:"https://openrouter.ai/api/v1/chat/completions",model:"openai/gpt-5.6-terra",apiKey:"",prompt:"아직 캐릭터 설정이 입력되지 않았습니다. 사용자가 설정을 입력하기 전에는 캐릭터의 과거나 관계를 임의로 지어내지 말고, 자연스럽게 대화를 시작하세요."};
 const DEFAULT_SYSTEM_RULE=`# SYSTEM_RULE
 
 - 이 대화는 허구의 창작 및 역할극이다. 장면의 맥락과 몰입을 유지하고 불필요한 훈계나 메타 발언을 피한다.
@@ -109,7 +109,7 @@ let systemRule=localStorage.getItem(RULE_KEY)||DEFAULT_SYSTEM_RULE;
 const CONFIG_KEY="dm_character_config_v1";
 const HISTORY_KEY="dm_character_history_v1";
 let config={...DEFAULTS,...JSON.parse(localStorage.getItem(CONFIG_KEY)||"{}")};
-if(!config.api)config.api=DEFAULTS.api;if(!config.model)config.model=DEFAULTS.model;if(!config.apiKey)config.apiKey="";
+if(!config.api||config.api==="https://api.openai.com/v1/chat/completions")config.api=DEFAULTS.api;if(!config.model||config.model==="gpt-4o-mini")config.model=DEFAULTS.model;if(!config.apiKey)config.apiKey="";
 if(!config.name||config.name==="캐릭터 이름"){config.name="백재하";localStorage.setItem(CONFIG_KEY,JSON.stringify(config));}
 let history=JSON.parse(localStorage.getItem(HISTORY_KEY)||"[]");
 let busy=false;
@@ -119,7 +119,7 @@ function applyConfig(){
  $("headName").textContent=config.name;$("profileName").textContent=config.name;
 
  $("profileBio").textContent=config.bio;$("cfgName").value=config.name;
- $("cfgBio").value=config.bio;$("cfgApi").value=config.api;$("cfgModel").value=config.model||"gpt-4o-mini";$("cfgKey").value=config.apiKey||"";$("cfgPrompt").value=config.prompt;
+ $("cfgBio").value=config.bio;$("cfgApi").value=config.api;$("cfgModel").value=config.model||"openai/gpt-5.6-terra";$("cfgKey").value=config.apiKey||"";$("cfgPrompt").value=config.prompt;
 }
 function saveHistory(){localStorage.setItem(HISTORY_KEY,JSON.stringify(history));}
 function clock(){return new Intl.DateTimeFormat("ko-KR",{hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date());}
@@ -161,7 +161,7 @@ async function sendMessage(text){
   ].join("\n\n");
   const messages=[{role:"system",content:systemPrompt},...history.slice(-24).filter(m=>m.role==="user"||m.role==="assistant").map(m=>({role:m.role,content:m.content}))];
   if(messages[messages.length-1]?.role!=="user"||messages[messages.length-1]?.content!==content)messages.push({role:"user",content});
-  const response=await fetch(config.api,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+config.apiKey},body:JSON.stringify({model:config.model||"gpt-4o-mini",messages,temperature:0.85,max_tokens:700})});
+  const response=await fetch(config.api,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+config.apiKey},body:JSON.stringify({model:config.model||"openai/gpt-5.6-terra",messages,temperature:0.85,max_tokens:700})});
   const data=await response.json();
   if(!response.ok)throw new Error(data.error?.message||data.error||"API 오류 ("+response.status+")");
   const answer=data.choices?.[0]?.message?.content||data.reply||data.message;
@@ -182,7 +182,7 @@ $("saveRule").onclick=()=>{systemRule=$("systemRuleText").value.trim()||DEFAULT_
 $("ruleModal").addEventListener("click",e=>{if(e.target===$("ruleModal"))$("ruleModal").classList.remove("open");});
 $("modalBack").addEventListener("click",e=>{if(e.target===$("modalBack"))$("modalBack").classList.remove("open");});
 $("saveConfig").onclick=()=>{
- config={name:$("cfgName").value.trim()||DEFAULTS.name,bio:$("cfgBio").value.trim()||DEFAULTS.bio,api:$("cfgApi").value.trim(),model:$("cfgModel").value.trim()||"gpt-4o-mini",apiKey:$("cfgKey").value.trim(),prompt:$("cfgPrompt").value.trim()||DEFAULTS.prompt};
+ config={name:$("cfgName").value.trim()||DEFAULTS.name,bio:$("cfgBio").value.trim()||DEFAULTS.bio,api:$("cfgApi").value.trim(),model:$("cfgModel").value.trim()||DEFAULTS.model,apiKey:$("cfgKey").value.trim(),prompt:$("cfgPrompt").value.trim()||DEFAULTS.prompt};
  localStorage.setItem(CONFIG_KEY,JSON.stringify(config));applyConfig();$("modalBack").classList.remove("open");
 };
 applyConfig();renderHistory();

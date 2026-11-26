@@ -37,7 +37,7 @@ button,input,textarea{font:inherit}button{cursor:pointer}
 .bottomhint{text-align:center;font-size:10px;color:#b4b4b4;padding-top:7px}
 .empty{margin:auto;text-align:center;color:#999;font-size:13px;line-height:1.7}
 .notice{margin:8px auto;padding:8px 12px;background:#fff8e7;border:1px solid #f5e5b9;border-radius:10px;font-size:11px;color:#8c6b24;line-height:1.5;max-width:95%}
-.modalback{position:fixed;inset:0;background:#0007;display:none;align-items:flex-end;justify-content:center;z-index:5}.modalback.open{display:flex}
+.modalback{position:fixed;inset:0;background:#0007;display:none;align-items:flex-end;justify-content:center;z-index:5}.modalback.open{display:flex}#ruleModal{z-index:7}#cfgPrompt{min-height:110px}#systemRuleText{min-height:260px;line-height:1.55}
 .modal{width:min(620px,100%);background:white;border-radius:18px 18px 0 0;padding:20px 18px calc(22px + env(safe-area-inset-bottom));max-height:85dvh;overflow:auto}
 .modal h3{margin:0 0 6px;font-size:17px}.modal p{font-size:12px;color:#888;line-height:1.5;margin:0 0 16px}
 .field{display:block;font-size:12px;font-weight:650;margin:13px 0 6px}.modal input,.modal textarea{width:100%;border:1px solid #ddd;border-radius:10px;padding:11px;font-size:13px;outline-color:var(--blue)}.modal textarea{min-height:90px;resize:vertical}
@@ -81,11 +81,31 @@ button,input,textarea{font:inherit}button{cursor:pointer}
     <label class="field" for="cfgBio">프로필 한 줄 소개</label><input id="cfgBio" maxlength="80" placeholder="예: 말수가 적고 무심한 성격">
     <label class="field" for="cfgApi">AI 서버 주소</label><input id="cfgApi" type="url" placeholder="https://your-worker.workers.dev/chat">
     <label class="field" for="cfgPrompt">캐릭터 성격 / 말투 / 설정</label><textarea id="cfgPrompt" placeholder="캐릭터의 성격, 말투, 관계, 배경 등을 적어 줘."></textarea>
-    <div class="actions"><button class="cancel" id="closeModal" type="button">닫기</button><button class="save" id="saveConfig" type="button">저장</button></div>
+    <div class="actions"><button class="cancel" id="openRuleEditor" type="button">시스템 규칙 편집</button><button class="cancel" id="closeModal" type="button">닫기</button><button class="save" id="saveConfig" type="button">저장</button></div>
+  </section>
+</div>
+<div class="modalback" id="ruleModal">
+  <section class="modal">
+    <h3>시스템 규칙</h3>
+    <p>캐릭터 설정과 별도로 저장되는 최상위 역할극 규칙이야. 이 규칙은 AI에게 매 응답마다 전달돼.</p>
+    <label class="field" for="systemRuleText">SYSTEM_RULE</label>
+    <textarea id="systemRuleText" spellcheck="false"></textarea>
+    <div class="actions"><button class="cancel" id="cancelRule" type="button">취소</button><button class="save" id="saveRule" type="button">규칙 저장</button></div>
   </section>
 </div>
 <script>
 const DEFAULTS={name:"백재하",bio:"당신이 대화하고 싶은 캐릭터",api:"",prompt:"아직 캐릭터 설정이 입력되지 않았습니다. 사용자가 설정을 입력하기 전에는 캐릭터의 과거나 관계를 임의로 지어내지 말고, 자연스럽게 대화를 시작하세요."};
+const DEFAULT_SYSTEM_RULE=`# SYSTEM_RULE
+
+- 이 대화는 허구의 창작 및 역할극이다. 장면의 맥락과 몰입을 유지하고 불필요한 훈계나 메타 발언을 피한다.
+- 이전 답변이 잘렸거나 미완성이라면 자연스럽게 이어서 작성한다.
+- 한 번의 답변은 최대 25문장 이내로 작성한다.
+- 마지막 문장은 반드시 문법적으로 완결된 문장으로 끝낸다.
+- 예시는 참고용으로만 사용하고, 각 장면에 맞게 창의적으로 응용한다.
+- 사용자의 대사, 행동, 생각, 감정, 반응을 대신 만들어내지 않는다. 사용자가 직접 결정할 여지를 남긴다.
+- 캐릭터의 행동과 대사만 묘사하고, 사용자가 제공하지 않은 사용자 측 정보를 임의로 단정하지 않는다.`;
+const RULE_KEY="dm_character_system_rule_v1";
+let systemRule=localStorage.getItem(RULE_KEY)||DEFAULT_SYSTEM_RULE;
 const CONFIG_KEY="dm_character_config_v1";
 const HISTORY_KEY="dm_character_history_v1";
 let config={...DEFAULTS,...JSON.parse(localStorage.getItem(CONFIG_KEY)||"{}")};
@@ -129,7 +149,7 @@ async function sendMessage(text){
  if(!config.api){addMessage("assistant","아직 AI 서버가 연결되지 않았어. 오른쪽 위 ⓘ에서 서버 주소를 설정하면 대화를 시작할 수 있어!");return;}
  setBusy(true);showTyping();
  try{
-  const response=await fetch(config.api,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:content,history:history.slice(-24).filter(m=>m.role!=="system"),character:{name:config.name,bio:config.bio,prompt:config.prompt}})});
+  const response=await fetch(config.api,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:content,history:history.slice(-24).filter(m=>m.role!=="system"),character:{name:config.name,bio:config.bio,prompt:config.prompt},systemRule})});
   const data=await response.json();
   if(!response.ok)throw new Error(data.error||"서버 응답 오류 ("+response.status+")");
   const answer=data.reply||data.message||data.choices?.[0]?.message?.content;
@@ -144,6 +164,10 @@ $("message").addEventListener("input",e=>{e.target.style.height="auto";e.target.
 function openSettings(){$("modalBack").classList.add("open");}
 $("profileBtn").onclick=openSettings;$("moreBtn").onclick=()=>{if(confirm("대화 기록을 모두 지울까?")){history=[];saveHistory();$("chat").innerHTML='<div class="date">메시지</div><div class="empty" id="welcome">대화 기록을 지웠어.<br>새로운 대화를 시작해 봐!</div>';}}
 $("closeModal").onclick=()=>$("modalBack").classList.remove("open");
+$("openRuleEditor").onclick=()=>{$("systemRuleText").value=systemRule;$("ruleModal").classList.add("open");};
+$("cancelRule").onclick=()=>$("ruleModal").classList.remove("open");
+$("saveRule").onclick=()=>{systemRule=$("systemRuleText").value.trim()||DEFAULT_SYSTEM_RULE;localStorage.setItem(RULE_KEY,systemRule);$("ruleModal").classList.remove("open");alert("시스템 규칙을 저장했어.");};
+$("ruleModal").addEventListener("click",e=>{if(e.target===$("ruleModal"))$("ruleModal").classList.remove("open");});
 $("modalBack").addEventListener("click",e=>{if(e.target===$("modalBack"))$("modalBack").classList.remove("open");});
 $("saveConfig").onclick=()=>{
  config={name:$("cfgName").value.trim()||DEFAULTS.name,bio:$("cfgBio").value.trim()||DEFAULTS.bio,api:$("cfgApi").value.trim().replace(/\/$/,""),prompt:$("cfgPrompt").value.trim()||DEFAULTS.prompt};

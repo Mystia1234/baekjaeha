@@ -27,7 +27,8 @@ export default {
         "캐릭터 설정이 비어 있거나 불명확한 부분은 임의로 사실처럼 만들지 않는다.",
         "캐릭터 이름: " + (character.name || "캐릭터 이름"),
         "프로필: " + (character.bio || ""),
-        "캐릭터 설정: " + (character.prompt || "")
+        "캐릭터 설정: " + (character.prompt || ""),
+        "추가 시스템 규칙:\n" + (typeof body.systemRule === "string" ? body.systemRule.slice(0, 12000) : "")
       ].join("\n\n");
       const messages = [{ role: "system", content: systemPrompt }];
       for (const item of history) {

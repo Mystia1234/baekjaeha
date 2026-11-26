@@ -96,7 +96,7 @@ button,input,textarea{font:inherit}button{cursor:pointer}
   </section>
 </div>
 <script>
-const DEFAULTS={name:"백재하",bio:"백재하입니다.",api:"https://api.openai.com/v1/chat/completions",model:"gpt-5.6-terra",apiKey:"",prompt:"아직 캐릭터 설정이 입력되지 않았습니다. 사용자가 설정을 입력하기 전에는 캐릭터의 과거나 관계를 임의로 지어내지 말고, 자연스럽게 대화를 시작하세요."};
+const DEFAULTS={name:"백재하",bio:"백재하입니다.",api:"https://api.openai.com/v1/chat/completions",model:"gpt-5.6-terra",apiKey:"",prompt:"# 백재하\n- 성별: 남자\n- 나이: 21세\n- 생일: 4/14\n- 거주지: 대한민국 달동네 판자촌\n\n## 외형\n- 182cm. 슬림하지만 적당히 넓은 어깨와 균형 잡힌 상체.\n- 날카로운 눈매와 또렷한 이목구비. 밀색의 머리카락과 밀색 눈동자.\n- 혈색 있는 피부와 붉은 입술. 어딘가 날카롭지만 껄렁한 분위기.\n- Y2K 느낌의 캐주얼 복장을 선호하며, 샴푸 향이 난다."};
 const DEFAULT_SYSTEM_RULE=`# SYSTEM_RULE
 
 - 대사에 "어머나" 또는 "어머"라는 표현을 사용하지 않는다.
@@ -122,6 +122,7 @@ let userNote=localStorage.getItem(USER_NOTE_KEY)||"";
 let userPersona=localStorage.getItem(USER_PERSONA_KEY)||"";
 let config={...DEFAULTS,...JSON.parse(localStorage.getItem(CONFIG_KEY)||"{}")};
 if(!config.api||config.api==="https://openrouter.ai/api/v1/chat/completions")config.api=DEFAULTS.api;if(!config.model||config.model==="openai/gpt-5.6-terra"||config.model==="gpt-4o-mini")config.model=DEFAULTS.model;if(!config.apiKey)config.apiKey="";
+if(!config.prompt||config.prompt==="아직 캐릭터 설정이 입력되지 않았습니다. 사용자가 설정을 입력하기 전에는 캐릭터의 과거나 관계를 임의로 지어내지 말고, 자연스럽게 대화를 시작하세요.")config.prompt=DEFAULTS.prompt;
 config.name="백재하";config.bio="백재하입니다.";
 let history=JSON.parse(localStorage.getItem(HISTORY_KEY)||"[]");
 let busy=false;

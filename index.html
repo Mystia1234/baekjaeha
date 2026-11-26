@@ -73,6 +73,9 @@ button,input,textarea{font:inherit}button{cursor:pointer}
     <div class="bottomhint">대화 내용은 이 기기에 자동 저장돼</div>
   </div>
 </div>
+
+<div class="modalback" id="lockModal"><section class="modal"><h3>제작자 전용 설정</h3><p>백재하의 캐릭터 설정을 열람하려면 비밀번호를 입력해 줘.</p><label class="field" for="creatorPassword">비밀번호</label><input id="creatorPassword" type="password" inputmode="numeric" autocomplete="off" placeholder="비밀번호 입력"><p id="lockError" style="display:none;color:#d44;margin:8px 0 0">비밀번호가 올바르지 않아.</p><div class="actions"><button class="cancel" id="cancelLock" type="button">취소</button><button class="save" id="unlockSettings" type="button">확인</button></div></section></div>
+
 <div class="modalback" id="modalBack">
   <section class="modal">
     <h3>대화 설정</h3>
@@ -189,8 +192,14 @@ async function sendMessage(text){
 }
 $("form").addEventListener("submit",e=>{e.preventDefault();sendMessage($("message").value);});
 $("message").addEventListener("input",e=>{e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,110)+"px";});
-function openSettings(){$("modalBack").classList.add("open");}
+const CREATOR_PASSWORD="14850";
+function openSettings(){$("creatorPassword").value="";$("lockError").style.display="none";$("lockModal").classList.add("open");setTimeout(()=>$("creatorPassword").focus(),100);}
+function unlockSettings(){if($("creatorPassword").value===CREATOR_PASSWORD){$("lockModal").classList.remove("open");$("modalBack").classList.add("open");}else{$("lockError").style.display="block";$("creatorPassword").value="";$("creatorPassword").focus();}}
 $("profileBtn").onclick=openSettings;
+$("unlockSettings").onclick=unlockSettings;
+$("cancelLock").onclick=()=>$("lockModal").classList.remove("open");
+$("creatorPassword").addEventListener("keydown",e=>{if(e.key==="Enter")unlockSettings();});
+$("lockModal").addEventListener("click",e=>{if(e.target===$("lockModal"))$("lockModal").classList.remove("open");});
 $("userProfileBtn").onclick=()=>{$("userNoteText").value=userNote;$("userPersonaText").value=userPersona;$("userModal").classList.add("open");};
 function selectUserTab(tab){const note=tab==="note";$("noteTab").classList.toggle("active",note);$("personaTab").classList.toggle("active",!note);$("noteTab").setAttribute("aria-selected",String(note));$("personaTab").setAttribute("aria-selected",String(!note));$("notePanel").classList.toggle("active",note);$("personaPanel").classList.toggle("active",!note);}
 $("noteTab").onclick=()=>selectUserTab("note");$("personaTab").onclick=()=>selectUserTab("persona");

@@ -109,6 +109,7 @@ let systemRule=localStorage.getItem(RULE_KEY)||DEFAULT_SYSTEM_RULE;
 const CONFIG_KEY="dm_character_config_v1";
 const HISTORY_KEY="dm_character_history_v1";
 let config={...DEFAULTS,...JSON.parse(localStorage.getItem(CONFIG_KEY)||"{}")};
+if(!config.api)config.api=DEFAULTS.api;if(!config.model)config.model=DEFAULTS.model;if(!config.apiKey)config.apiKey="";
 if(!config.name||config.name==="캐릭터 이름"){config.name="백재하";localStorage.setItem(CONFIG_KEY,JSON.stringify(config));}
 let history=JSON.parse(localStorage.getItem(HISTORY_KEY)||"[]");
 let busy=false;

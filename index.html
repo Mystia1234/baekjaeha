@@ -180,7 +180,7 @@ async function sendMessage(text){
   ].join("\n\n");
   const messages=[{role:"system",content:systemPrompt},...history.slice(-24).filter(m=>m.role==="user"||m.role==="assistant").map(m=>({role:m.role,content:m.content}))];
   if(messages[messages.length-1]?.role!=="user"||messages[messages.length-1]?.content!==content)messages.push({role:"user",content});
-  const response=await fetch(config.api,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+config.apiKey},body:JSON.stringify({model:config.model||"gpt-5.6-terra",messages,temperature:0.85,max_tokens:700})});
+  const response=await fetch(config.api,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+config.apiKey},body:JSON.stringify({model:config.model||"gpt-5.6-terra",messages,temperature:0.85,max_completion_tokens:700})});
   const data=await response.json();
   if(!response.ok)throw new Error(data.error?.message||data.error||"API 오류 ("+response.status+")");
   const answer=data.choices?.[0]?.message?.content||data.reply||data.message;

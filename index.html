@@ -99,7 +99,7 @@ button,input,textarea{font:inherit}button{cursor:pointer}
     <button class="iconbtn" id="moreBtn" aria-label="메뉴">⋯</button>
   </header>
   <div class="callbar" id="callBar"><button type="button" class="barinfo" id="callExpand"><span class="dot"></span><span id="callBarTime">00:00</span><span id="callBarState">통화 중</span></button><button type="button" class="barbtn" id="callBarMute">마이크 끄기</button><button type="button" class="barbtn end" id="callBarEnd">끊기</button></div>
-  <div class="callbar" id="musicBar"><span class="eq"><i></i><i></i><i></i></span><span id="musicTxt" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span><button type="button" class="barbtn end" id="musicStop">끝내기</button></div>
+  <div class="callbar" id="musicBar"><span class="eq"><i></i><i></i><i></i></span><span id="musicTxt" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span><button type="button" class="barbtn" id="musicPause">일시정지</button><button type="button" class="barbtn end" id="musicStop">끝내기</button></div>
   <section class="profile">
     <div class="bigavatar"><img src="1795535148960.png" alt="백재하 프로필 사진"></div>
     <h2 id="profileName">백재하</h2>
@@ -426,7 +426,7 @@ async function fetchReply(callMode,extra){
    timeContext(),
    "재하의 오늘 일상(재하가 실제로 겪은 일이다. 물어보거나 흐름에 맞을 때만 자연스럽게 꺼내고, 먼저 보고하듯 늘어놓지 않는다):\n"+(life.text||"아직 없음")+(life.arc?"\n이번 주 재하의 줄거리(일상의 배경):\n"+life.arc:"")+(life.past&&life.past.length?"\n지난 주 줄거리(지난 일, 가끔 후일담처럼만 언급):\n"+life.past.join("\n"):""),
    "재하의 속마음(겉으로 직접 말하지 않고 말투와 반응의 방향에만 반영한다):\n"+(inner.text?inner.text+"\n(갱신 후 "+fmtAgo(Date.now()-(inner.at||Date.now()))+" 경과. 감정은 시간이 지나면 서서히 풀리므로 오래됐을수록 약하게 반영한다)":"없음"),
-   moodHint(),moodNow(),nowDoing(),listenCtx(),disagreeHint(),toneHint(),callOfferHint(),
+   moodHint(),moodNow(),nowDoing(),listenCtx(),disagreeHint(),toneHint(),callOfferHint(),extHint(),
    "시스템 규칙:\n"+systemRule
   ].join("\n\n");
   if(callMode)systemPrompt+="\n\n"+CALL_RULE;
@@ -478,11 +478,11 @@ async function sendMessage(text){
   if(rt&&!inCall)await maybeTypo(rt);
   if(rr.away)goAway(rr.away);
   if(rr.call&&!callActive){callOffer=0;setTimeout(incomingCall,3000);}
-  if(rr.plan)localStorage.setItem("dm_plan_v1",JSON.stringify({at:Date.now()+rr.plan*6e4,txt:rt.slice(-30)}));
+  extApplyTags(rr);if(rr.plan)localStorage.setItem("dm_plan_v1",JSON.stringify({at:Date.now()+rr.plan*6e4,txt:rt.slice(-30)}));
   if(inCall){try{await speakInCall(rr.text);}catch(e){if(e.name!=="AbortError")callState("음성 오류: "+e.message,"");}}
  }catch(err){
   tok.cancel=true;$("typing")?.remove();if(err.name!=="AbortError")addMessage("assistant","연결에 실패했어: "+err.message,clock(),false);
- }finally{setBusy(false);$("message").focus();if(inCall){callBusy=false;if(callActive)setTimeout(listen,200);}setTimeout(()=>{summarizeMemory(false);updateInner(/꺼져|짜증|화나|씨발|미안|보고\s?싶|사랑|좋아해|고마워/.test(String(history.filter(m=>m.role==="user").slice(-1)[0]?.content||"")));},800);}
+ }finally{setBusy(false);$("message").focus();if(inCall){callBusy=false;if(callActive)setTimeout(listen,200);}setTimeout(()=>{extScanEvents();summarizeMemory(false);updateInner(/꺼져|짜증|화나|씨발|미안|보고\s?싶|사랑|좋아해|고마워/.test(String(history.filter(m=>m.role==="user").slice(-1)[0]?.content||"")));},800);}
 }
 $("form").addEventListener("submit",e=>{e.preventDefault();sendMessage($("message").value);});
 $("message").addEventListener("input",e=>{e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,110)+"px";});
@@ -605,7 +605,7 @@ async function handleUtterance(text){
   failed=true;
   if(callActive&&err.name!=="AbortError"){$("callCap").textContent="";callState("오류: "+err.message,"");}
  }finally{
-  callBusy=false;setBusy(false);setTimeout(()=>{summarizeMemory(false);updateInner(/꺼져|짜증|화나|씨발|미안|보고\s?싶|사랑|좋아해|고마워/.test(String(history.filter(m=>m.role==="user").slice(-1)[0]?.content||"")));},800);
+  callBusy=false;setBusy(false);setTimeout(()=>{extScanEvents();summarizeMemory(false);updateInner(/꺼져|짜증|화나|씨발|미안|보고\s?싶|사랑|좋아해|고마워/.test(String(history.filter(m=>m.role==="user").slice(-1)[0]?.content||"")));},800);
   if(callActive)setTimeout(listen,failed?2500:200);
  }
 }
@@ -671,7 +671,7 @@ async function refreshLife(){
   const wd=new Intl.DateTimeFormat("ko-KR",{weekday:"long"}).format(new Date());
   const dd=new Date(),wk=dd.getFullYear()+"-"+Math.floor(((dd-new Date(dd.getFullYear(),0,1))/864e5+new Date(dd.getFullYear(),0,1).getDay())/7);
   if(life.week!==wk){if(life.arc)life.past=[life.arc.replace(/\s+/g," ").slice(0,160),...(life.past||[])].slice(0,3);try{life.arc=await askModel("너는 롤플레이 캐릭터 백재하의 이번 주 줄거리를 정하는 담당이다. 캐릭터 설정에 맞게 이번 주 재하의 삶에서 이어질 이야기 줄기 2~3개를 쓴다(학교 과제·시험, 알바 일, 소소한 인간관계, 몸 상태 등). 설정에 없는 가족·연애·돈 사실은 만들지 않고 구동현과 있었던 일도 만들지 않는다. 불릿(-) 3줄 이내로 본문만 출력한다.","[캐릭터 설정]\n"+config.prompt.split("# 대화 스타일")[0],900);life.week=wk;}catch(e){}}
-  const t=await askModel("너는 롤플레이 캐릭터 백재하의 하루를 정하는 담당이다. 캐릭터 설정에 맞게 오늘 백재하가 겪은 일상을 만들어라.\n- 오늘 한 일 3~4개(요일에 맞는 수업·공강·알바 일정 등), 지금까지의 기분, 마주친 사람이나 작은 사건 하나, 아직 못 한 일 하나.\n- 어제 일상이 있으면 이어지게 한다(피곤이 남았다 등).\n- 설정에 없는 가족·연애·돈 사실은 새로 만들지 않고, 구동현과 있었던 일도 만들지 않는다.\n- 아래 [오늘 시간표]를 그대로 따르고, 이번 주 줄거리를 하루 한 걸음씩 진전시킨다. \'노가다\'라는 단어는 쓰지 않는다(알바·일).\n- 불릿(-) 5줄 이내로 본문만 출력한다.","[오늘 시간표]\n"+schedText()+"\n[캐릭터 설정]\n"+config.prompt.split("# 대화 스타일")[0]+"\n[오늘] "+d+" "+wd+"\n\n[어제 일상]\n"+(life.text||"(없음)")+"\n\n[이번 주 줄거리]\n"+(life.arc||"(없음)"),1200);
+  const t=await askModel("너는 롤플레이 캐릭터 백재하의 하루를 정하는 담당이다. 캐릭터 설정에 맞게 오늘 백재하가 겪은 일상을 만들어라.\n- 오늘 한 일 3~4개(요일에 맞는 수업·공강·알바 일정 등), 지금까지의 기분, 마주친 사람이나 작은 사건 하나, 아직 못 한 일 하나.\n- 어제 일상이 있으면 이어지게 한다(피곤이 남았다 등).\n- 설정에 없는 가족·연애·돈 사실은 새로 만들지 않고, 구동현과 있었던 일도 만들지 않는다.\n- 아래 [오늘 시간표]를 그대로 따르고, 이번 주 줄거리를 하루 한 걸음씩 진전시킨다. \'노가다\'라는 단어는 쓰지 않는다(알바·일).\n- 불릿(-) 5줄 이내로 본문만 출력한다.","[오늘 시간표]\n"+schedText()+"\n[캐릭터 설정]\n"+config.prompt.split("# 대화 스타일")[0]+"\n[오늘] "+d+" "+wd+extLifeCond()+"\n\n[어제 일상]\n"+(life.text||"(없음)")+"\n\n[이번 주 줄거리]\n"+(life.arc||"(없음)"),1200);
   life={date:d,week:life.week,arc:life.arc,past:life.past,log:[...(life.text?[life.date+" "+life.text.replace(/\s+/g," ").slice(0,140)]:[]),...(life.log||[])].slice(0,4),text:t.slice(0,800)};try{localStorage.setItem(LIFE_KEY,JSON.stringify(life));}catch(e){}
  }catch(e){console.warn("life failed",e);}finally{lifeBusy=false;}
 }
@@ -687,6 +687,111 @@ async function updateInner(force){
  }
  try{localStorage.setItem(INNER_KEY,JSON.stringify(inner));}catch(e){}
 }
+// ===== 확장: 컨디션/일정/화해/게임/데이트/말수/환경 =====
+const EXT_KEY="dm_ext_v1";let ext=safeParse(localStorage.getItem(EXT_KEY),{});
+if(typeof ext!=="object"||Array.isArray(ext))ext={};if(!Array.isArray(ext.ev))ext.ev=[];if(!ext.q)ext.q={};
+const saveExt=()=>{try{localStorage.setItem(EXT_KEY,JSON.stringify(ext));}catch(e){}};
+const ymd=d=>new Date(d).toLocaleDateString("sv-SE"),dayKey=()=>ymd(Date.now());
+const dayDiff=k=>Math.round((new Date(k+"T00:00:00")-new Date(dayKey()+"T00:00:00"))/864e5);
+const wdName=k=>new Intl.DateTimeFormat("ko-KR",{weekday:"long"}).format(new Date(k+"T00:00:00"));
+const dayLabel=k=>{const x=dayDiff(k);return x===0?"오늘":x===1?"내일":x===2?"모레":k.slice(5).replace("-","/")+" "+wdName(k);};
+const CONDS=[{t:"감기",d:[3,5],s:"목 아픔, 코막힘, 기침"},{t:"몸살",d:[2,3],s:"온몸이 쑤시고 무거움"},{t:"숙취",d:[1,2],s:"머리 아픔, 속 쓰림"},{t:"알바 후 몸살",d:[2,3],s:"허리·팔다리 근육통"}];
+const ENVS=[{t:"폰 배터리가 5%라 충전하러 감",x:"폰 5% ㅅㅂ 충전하고 옴",m:[6,15]},{t:"버스를 놓침",x:"버스 놓침ㅋ",m:[5,12]},{t:"와이파이가 안 터짐",x:"와이파이 안 터짐",m:[3,10]}];
+function condNow(){const c=ext.cond;if(!c)return null;const k=dayDiff(c.end);if(k<0){ext.condEnd=c.end;ext.cond=null;saveExt();return null;}const n=1-dayDiff(c.start);return{t:c.t,s:c.s,n,tot:n+k};}
+function extDaily(){
+ const d=dayKey();if(ext.day===d)return;ext.day=d;condNow();ext.envWhy="";
+ if(!ext.cond&&(ext.condEnd?-dayDiff(ext.condEnd):99)>=6){
+  const worked=daySchedule(new Date(Date.now()-864e5)).some(b=>b.k==="work"),r=Math.random(),dw=new Date().getDay();
+  const p=worked&&r<0.16?CONDS[3]:(dw===6||dw===0)&&r<0.14?CONDS[2]:r<0.05?CONDS[0]:r<0.08?CONDS[1]:null;
+  if(p){const n=p.d[0]+Math.floor(Math.random()*(p.d[1]-p.d[0]+1));ext.cond={t:p.t,s:p.s,start:d,end:ymd(Date.now()+(n-1)*864e5)};}
+ }
+ ext.ev=ext.ev.filter(e=>dayDiff(e.d)>=-1);saveExt();
+}
+function extLifeCond(){const c=condNow();return c?"\n[재하 몸 상태] "+c.t+" "+c.n+"일째. 오늘 일상에도 자연스럽게 반영한다(무리 못 하고 아직 "+c.s+")":"";}
+function tempoToday(){const r=rng(dayKey()+"tempo")();return r<0.22?"오늘 말수: 수다 모드. 평소보다 말이 많고 드립과 잡담이 늘며 두 줄까지 길게 쓰기도 한다.":r>0.74?"오늘 말수: 단답 모드. 'ㅇㅇ','ㅋ','그래' 같은 한 줄 이하 단답이 대부분이다. 화난 게 아니라 그냥 기운이 없는 날이다.":"";}
+function moodObj(){const m=(inner.text||"").match(/([^\s\/:]+)\s*\/\s*([1-5])\s*\/\s*(\d+)/);if(!m||!inner.at)return null;return{l:m[1],v:+m[2]*Math.pow(0.5,(Date.now()-inner.at)/6e4/Math.max(20,+m[3]/3))};}
+function gameCur(){const n=Date.now(),d=new Date(n),R=rng(ymd(n)+"mystia"),we=d.getDay()===0||d.getDay()===6;if(R()>=(we?0.8:0.6))return null;const s=we?Math.round(13*60+R()*300):Math.round(20.5*60+R()*90),e=s+Math.round(50+R()*100),mn=d.getHours()*60+d.getMinutes();return mn>=s&&mn<e?{k:ymd(n)+":"+s}:null;}
+function gameOnline(){return !!gameCur()&&!curBlock()&&!(away.until>Date.now());}
+function extHint(){
+ extDaily();const t=[],c=condNow(),tp=tempoToday();
+ if(c)t.push("재하의 몸 상태: 지금 '"+c.t+"' "+c.n+"일째(총 "+c.tot+"일쯤 감). "+c.s+" 같은 증상이 하루 만에 사라지지 않고 이어진다. "+(c.n>=c.tot?"끝물이라 많이 나았지만 '아직 좀 남음' 정도의 흔적이 있다. ":c.n===1?"막 시작된 첫날이다. ":"어제와 비슷하거나 조금 나아졌다. ")+"매 답마다 아픈 티를 내지 말고 가끔 한마디만 하며, 걱정받으면 투덜대며 받아치되 은근히 좋아한다. 약·병원 같은 구체 사실은 지어내지 않는다.");
+ else t.push("몸 상태 규칙: 재하가 감기·몸살·숙취·알바 후 근육통처럼 며칠 가는 컨디션을 대화에서 자연스럽게 처음 언급하게 되면(아주 드물게) 그 답 끝에 [컨디션:라벨:일수] 태그를 붙인다(예: [컨디션:감기:3]).");
+ if(tp)t.push(tp);
+ const up=ext.ev.filter(e=>dayDiff(e.d)>=0&&dayDiff(e.d)<=3);
+ if(up.length)t.push("동현이 직접 말한 예정: "+up.map(e=>dayLabel(e.d)+" "+e.txt+(e.tm?" "+e.tm:"")).join(", ")+". 관련 화제가 나오면 자연스럽게 챙기되 매번 들먹이지 않고, 여기에 없는 일정은 지어내지 않는다.");
+ if(ext.q.st==="mad")t.push("재하는 지금 삐진 상태라 먼저 사과하지 않는다('미안' 금지). 풀리더라도 겉으로는 티를 내지 않는다.");
+ if(ext.q.st==="awk"&&Date.now()-ext.q.at<4*36e5)t.push("재하가 방금 사과 대신 어색하게 말을 걸어 화해를 시도했다. 사용자가 받아주면 못 이기는 척 슬쩍 풀리고('아 몰라ㅋ'), 사과하면 '아 됐다고ㅋ' 하며 넘긴다. 아직 차가우면 당황한 티를 내며 한 번 더 어설프게 말을 건다.");
+ const dt=ext.dt;
+ if(dt&&dt.st==="prop")t.push("재하가 "+dayLabel(dt.d)+"에 "+dt.txt+" 보러 가자고 제안한 상태다. 사용자가 수락하면 무심한 척 좋아하며 답 끝에 [데이트확정]을, 다른 날로 정하면 [데이트확정:YYYY-MM-DD]를, 거절하면 쿨하게 받고 [데이트취소]를 붙인다. 답이 없으면 태그를 붙이지 않는다.");
+ if(dt&&dt.st==="set")t.push(dayLabel(dt.d)+"에 동현과 "+dt.txt+" 데이트가 잡혀 있다. 들뜬 티를 내지 않고 무심한 척하되 말이 나오면 챙긴다.");
+ if(gameOnline())t.push("재하는 지금 미스티아에 접속해 게임 중이다(상태 표시도 '미스티아 접속 중'). 답이 조금 무심하고 동현(길마)을 게임으로 부를 수 있다. 레벨·장비·길드원 같은 구체 설정은 지어내지 않는다.");
+ return t.length?"[추가 상황]\n"+t.join("\n"):"";
+}
+function extApplyTags(rr){
+ if(rr.cond&&!condNow())ext.cond={t:rr.cond.t,s:"",start:dayKey(),end:ymd(Date.now()+(rr.cond.days-1)*864e5)};
+ if(ext.dt&&ext.dt.st==="prop"){
+  if(rr.dtOk){ext.dt.st="set";if(rr.dtDate&&dayDiff(rr.dtDate)>=0&&dayDiff(rr.dtDate)<=21)ext.dt.d=rr.dtDate;}
+  else if(rr.dtNo){ext.dtLast=dayKey();ext.dt=null;}
+ }
+ saveExt();
+}
+function extAfterPro(){if(ext.pendAway){goAway(ext.pendAway);ext.pendAway=0;saveExt();}}
+async function extScanEvents(){
+ try{
+  if(!config.apiKey)return;
+  const us=history.filter(m=>m.role==="user"&&m.content),u=us[us.length-1];
+  if(!u||u.id<=(ext.scan||0))return;ext.scan=u.id;saveExt();
+  if(!/내일|모레|글피|이따|다음\s?주|담주|이번\s?주|[월화수목금토일]요일|\d{1,2}\s?월|\d{1,2}\s?일|\d{1,2}\s?시|오늘|시험|면접|발표|약속|병원|마감|공연|여행/.test(u.content))return;
+  const talk=history.filter(m=>m.role==="user"||m.role==="assistant").slice(-4).map(m=>(m.role==="user"?"동현: ":"재하: ")+String(m.content||"").replace(/\s+/g," ").slice(0,160)).join("\n"),d=dayKey();
+  const out=await askModel("너는 채팅 앱의 일정 추출 담당이다. 동현(사용자)의 마지막 메시지에서 동현 본인의 앞으로의 일정(시험·약속·면접·발표·병원·마감·여행 등)만 뽑는다. 오늘 날짜와 요일로 날짜를 계산해 한 줄에 하나씩 'YYYY-MM-DD|HH:MM 또는 -|내용(15자 이내)' 형식으로만 출력한다. 재하의 일정, 지난 일, 일상 잡담, 날짜를 알 수 없는 것은 제외한다. 없으면 '없음'만 출력한다.","[오늘] "+d+" "+wdName(d)+"\n[최근 대화]\n"+talk+"\n[동현의 마지막 메시지]\n"+u.content.slice(0,300),300);
+  let add=0;
+  out.split("\n").forEach(l=>{const m=l.trim().match(/^(\d{4}-\d{2}-\d{2})\s*\|\s*([^|]*)\|\s*(.+)$/);if(!m)return;const k=dayDiff(m[1]),tx=m[3].trim().slice(0,20);if(!(k>=0&&k<=60)||ext.ev.some(e=>e.d===m[1]&&(e.txt.includes(tx)||tx.includes(e.txt))))return;ext.ev.push({d:m[1],tm:m[2].trim().replace(/^-$/,""),txt:tx,skip:Math.random()<0.5?1:0});add++;});
+  if(add){ext.ev.sort((a,b)=>a.d<b.d?-1:1);ext.ev=ext.ev.slice(0,30);saveExt();}
+ }catch(e){console.warn("event scan failed",e);}
+}
+function extTick(n,h,last){
+ extDaily();
+ if(!last||last.role!=="assistant"||history.slice(-2).filter(m=>m.pro).length>=2)return"";
+ const quiet=n-last.ts,day=dayKey(),b=curBlock(),dt=ext.dt;let x;
+ if(dt&&(dayDiff(dt.d)<0||(dt.st==="prop"&&n-dt.at>2*864e5))){ext.dtLast=dt.d;ext.dt=null;saveExt();}
+ if(quiet>8000&&(x=musExtra(n)))return x;
+ if(quiet<45000)return"";
+ if(ext.dt&&ext.dt.st==="set"&&dayDiff(ext.dt.d)===0){
+  if(!ext.dt.pre&&h>=9&&h<14&&!(b&&b.k==="sleep")){ext.dt.pre=1;saveExt();return"오늘은 동현과 "+ext.dt.txt+" 데이트하기로 한 날이다. 재하가 아침에 먼저 연락해 깨운다('일어나라ㅋ 오늘 영화' 식, 그대로 복사 말고 응용). 한 줄로.";}
+  if(!ext.dt.post&&h>=22){ext.dt.post=1;ext.dtLast=ext.dt.d;saveExt();return"오늘 동현과 "+ext.dt.txt+" 데이트를 하고 헤어진 밤이다. 재하가 무심한 척 한마디 먼저 보낸다(집에 잘 갔냐 등). 데이트 중 구체적인 장면은 지어내지 않는다. 한 줄로.";}
+ }
+ for(const e of ext.ev){
+  const k=dayDiff(e.d),eh=/^\d{1,2}:\d{2}$/.test(e.tm||"")?+e.tm.split(":")[0]:-1,ph=eh>=0?Math.min(eh+2,22):18;
+  if(k===0&&!b){
+   if(!e.post&&h>=ph){e.post=1;saveExt();return"동현이 오늘 '"+e.txt+"'이(가) 있다고 미리 말해뒀다. 재하가 먼저 연락해 결과를 묻는다(시험이면 잘 봤냐, 약속이면 잘 놀았냐, 면접·발표면 어땠냐). 결과는 지어내지 않고 무심한 척 한마디만 묻는다. 한 줄로.";}
+   if(!e.pre&&!e.skip&&!e.post&&h>=9&&h<ph-1&&(eh<0||h<eh)){e.pre=1;saveExt();return"동현이 오늘 '"+e.txt+"'"+(e.tm?"("+e.tm+")":"")+"이(가) 있다고 말해뒀다. 재하가 먼저 무심한 척 챙긴다('오늘 그거지?ㅋ 잘 해' 식). 한 줄로.";}
+  }
+  if(k===-1&&!e.post&&h>=10&&!b){e.post=1;saveExt();return"동현이 어제 '"+e.txt+"'이(가) 있다고 말했었다. 재하가 뒤늦게 생각난 듯 어땠는지 먼저 묻는다. 결과는 지어내지 않는다. 한 줄로.";}
+ }
+ const mo=moodObj(),sulk=mo&&/삐|짜증|화|서운|토라/.test(mo.l);
+ if(sulk&&mo.v>=2){if(ext.q.st!=="mad"){ext.q={st:"mad",at:n};saveExt();}}
+ else if(ext.q.st==="mad"&&(!sulk||mo.v<1.4)&&quiet>10*6e4&&!b){ext.q={st:"awk",at:n};saveExt();return"삐진 게 풀려가지만 재하는 사과를 못 한다. 사과 대신 딴소리로 어색하게 화해를 시도한다(예: '야 라면 먹을래', '아 몰라 전화나 받아', '미스티아 접속해라'를 응용). 미안하다는 말은 쓰지 않는다. 한 줄로.";}
+ else if(ext.q.st==="awk"&&n-ext.q.at>4*36e5){ext.q={};saveExt();}
+ if(!ext.dt){
+  if(ext.dtRoll!==day){ext.dtRoll=day;ext.dtGo=Math.random()<0.2;saveExt();}
+  if(ext.dtGo&&(ext.dtLast?-dayDiff(ext.dtLast):99)>=7&&h>=12&&h<23&&quiet>3*6e4&&!b&&history.length>=12){
+   const tg=Math.random()<0.7?6:0;let k=2;for(;k<9;k++)if(new Date(n+k*864e5).getDay()===tg)break;
+   const d=ymd(n+k*864e5),tx=Math.random()<0.6?"영화":"카페";ext.dt={d,txt:tx,st:"prop",at:n};ext.dtGo=false;saveExt();
+   return"재하가 동현에게 밖에서 하는 데이트를 툭 던지듯 제안한다. "+wdName(d)+"에 "+tx+" 가자고 구체적인 요일과 활동을 말한다('토요일에 영화 볼래?' 식, 복사 말고 응용). 조르지 않고 한 줄로.";
+  }
+ }
+ if(gameOnline()){
+  const g=gameCur(),gs=ext.g&&ext.g.k===g.k?ext.g:(ext.g={k:g.k,c:0,at:0});
+  if(gs.c<2&&n-gs.at>40*6e4&&quiet>2*6e4&&Math.random()<(gs.c?0.15:0.5)){gs.c++;gs.at=n;saveExt();return"재하는 지금 미스티아에 접속해 있다. 동현(길마)에게 게임 얘기로 먼저 연락한다('레이드 같이 갈래?', '길마 뭐함ㅋ', '접속해라ㅋ' 식, 복사 말고 응용). 구체적인 게임 설정은 지어내지 않는다. 한 줄로.";}
+ }
+ if(ext.envRoll!==day){ext.envRoll=day;ext.envGo=Math.random()<0.4;saveExt();}
+ if(ext.envGo&&quiet<12*6e4&&!b&&h>=9&&Math.random()<0.02&&history.filter(m=>m.role==="user").length>=6){
+  const E=ENVS[Math.floor(Math.random()*ENVS.length)];ext.envGo=false;ext.envWhy=E.t;ext.pendAway=E.m[0]+Math.floor(Math.random()*(E.m[1]-E.m[0]+1));saveExt();
+  return"재하에게 방금 사소한 일이 생겼다: "+E.t+". 재하가 '"+E.x+"'처럼 짧게 한 줄 남기고 잠깐 사라진다(복사 말고 말투 응용). 길게 설명하지 않는다.";
+ }
+ return"";
+}
+extDaily();
 refreshLife();
 // ===== 기념일 / 상태 / 먼저 연락 / 눈치 / 기억 선택 / 끼어들기 =====
 function fmtAgo(ms){const m=Math.max(1,Math.round(ms/60000));return m<60?m+"분":m<1440?Math.floor(m/60)+"시간":Math.floor(m/1440)+"일";}
@@ -731,7 +836,7 @@ let defer=safeParse(localStorage.getItem("dm_defer_v1"),{});function saveDefer()
 function presenceText(){
  const n=Date.now();
  if(away.until>n)return agoText(n-away.since);
- const b=curBlock();return b?agoText(Math.max(n-b.startTs,5*60000)):"활동 중";
+ if(gameOnline())return"미스티아 접속 중";const b=curBlock();return b?agoText(Math.max(n-b.startTs,5*60000)):"활동 중";
 }
 function updatePresence(){if(!busy)$("headStatus").textContent=presenceText();}
 function goAway(min){away={since:Date.now(),until:Date.now()+min*60000};updatePresence();}
@@ -740,12 +845,13 @@ async function proactiveTick(){
  const n=Date.now(),talk=history.filter(m=>m.role==="user"||m.role==="assistant"),last=talk[talk.length-1];
  if(!last||!last.ts)return;
  const h=new Date().getHours(),day=new Date().toLocaleDateString("sv-SE");let extra="";
- if(defer.until&&n>=defer.until)extra="사용자 메시지에 늦게 답한다. 그동안 '"+defer.t+"' 상태였다. '아 알바 갔다옴ㅋ', '수업이었음', '자고 있었음'처럼 늦은 이유만 아주 짧게 돌려 말하고(노가다 금지) 바로 사용자 메시지에 답한다.";else if(away.until&&n>=away.until)extra="재하가 자리를 비웠다가 방금 돌아왔다. 다녀온 일을 짧게 한마디 한다(예: 밥 먹고 옴). 한 줄로.";
+ if(defer.until&&n>=defer.until)extra="사용자 메시지에 늦게 답한다. 그동안 '"+defer.t+"' 상태였다. '아 알바 갔다옴ㅋ', '수업이었음', '자고 있었음'처럼 늦은 이유만 아주 짧게 돌려 말하고(노가다 금지) 바로 사용자 메시지에 답한다.";else if(away.until&&n>=away.until)extra="재하가 자리를 비웠다가 방금 돌아왔다. "+(ext.envWhy?"자리를 비운 이유는 '"+ext.envWhy+"'였다. 그 일을 마치고 돌아온 걸 짧게 한마디 한다.":"다녀온 일을 짧게 한마디 한다(예: 밥 먹고 옴).")+" 한 줄로.";
+ else if(!away.until&&!defer.until&&(extra=extTick(n,h,last)||"")){}
  else if(!away.until&&last.role==="assistant"&&n-last.ts>proNext&&history.slice(-3).filter(m=>m.pro).length<2&&!curBlock()&&Math.random()<0.8&&history.filter(m=>m.pro&&m.ts&&new Date(m.ts).toLocaleDateString("sv-SE")===day).length<8)extra="사용자가 한동안 말이 없다. 재하가 먼저 가볍게 한마디 보낸다(예: 심심해서 툭 던지기, 뭐하냐, 아까 하던 얘기 이어가기). 한 줄로, 캐묻거나 보채지 않는다. 지금 시각과 재하의 일상에 맞게 한다. 밤이 깊었는데 말이 없으면 '야 자냐' 같은 한마디도 좋다.";
  if(extra.startsWith("사용자가 한동안")&&!curBlock()&&SR&&Math.random()<0.3){extra="사용자가 한동안 말이 없다. 재하가 심심해서 먼저 '전화할래?' 식으로 전화하자고 가볍게 물어본다. 한 줄로.";callOffer=n;}
  const pl=safeParse(localStorage.getItem("dm_plan_v1"),{});
  if(!extra&&pl.at&&n>=pl.at&&!curBlock()){extra="아까 한 약속('"+pl.txt+"')을 지킬 시간이다. "+(Math.random()<0.7?"약속대로 연락한다.":"깜빡해서 늦은 척 '아 맞다ㅋ' 하며 연락한다.")+" 한 줄로.";localStorage.removeItem("dm_plan_v1");if(/전화/.test(pl.txt)&&SR)setTimeout(()=>{if(!callActive&&confirm("📞 백재하에게 전화가 왔어. 받을래?"))startCall();},1500);}
- if(!extra&&mus.t&&n-(mus.c||0)>(35+Math.random()*35)*1000&&Math.random()<0.9){extra="지금 같이 듣는 중인 노래 '"+mus.t+"'에 재하가 즉석 감상평을 툭 던진다. 듣기 시작한 지 "+fmtAgo(n-(mus.s||n))+"째이고, 노래 진행에 맞춰(도입·비트·보컬·후렴·곧 끝남 등 지금 나오는 부분을 듣는 것처럼) 짧게 반응한다. 가사는 그대로 인용하지 않고, 이전 감상평과 겹치지 않게 한 줄로.";mus.c=n;localStorage.setItem(MUS_KEY,JSON.stringify(mus));}
+
  if(!extra&&!curBlock()&&h>=9){const ev=specialList().filter(x=>x.k===0).map(x=>x.t),dn=safeParse(localStorage.getItem("dm_evdone_v1"),{});if(ev.length&&dn.d!==day){extra="오늘은 "+ev.join(", ")+"이다. 재하가 먼저 연락한다. "+(Math.random()<0.5?"무심한 척 툭 던지듯 챙긴다(축하·저녁·선물).":"일부러 모르는 척하며 '오늘 뭐함ㅋ', '저녁에 시간 되냐'처럼 은근히 티만 낸다.")+" 한 줄로.";dn.d=day;localStorage.setItem("dm_evdone_v1",JSON.stringify(dn));}}
  if(!extra)return;
  proBusy=true;setBusy(true);if(extra.startsWith("사용자 메시지에 늦게"))markRead();showTyping();
@@ -753,9 +859,9 @@ async function proactiveTick(){
   const ans=splitReaction(await fetchReply(false,extra)).text;
   $("typing")?.remove();
   if(ans){const pr=addMessage("assistant",ans,clock(),true,null,null,true);history[history.length-1].pro=true;saveHistory();await pr;}
-  proNext=(2+Math.random()*5)*60000;if(extra.startsWith("사용자 메시지에 늦게")){defer={};saveDefer();localStorage.setItem("dm_brk",String(Date.now()+25*6e4));}
+  proNext=(2+Math.random()*5)*60000;extAfterPro();if(extra.startsWith("사용자 메시지에 늦게")){defer={};saveDefer();localStorage.setItem("dm_brk",String(Date.now()+25*6e4));}
  }catch(e){$("typing")?.remove();}
- finally{if(extra.startsWith("재하가 자리"))away.until=0;proBusy=false;setBusy(false);}
+ finally{if(extra.startsWith("재하가 자리")){away.until=0;ext.envWhy="";saveExt();}proBusy=false;setBusy(false);}
 }
 function typo(q){const a=[...q],i=a.map((c,k)=>/[가-힣]/.test(c)?k:-1).filter(k=>k>=0);if(i.length<2)return null;const k=i[Math.floor(Math.random()*i.length)],c=a[k].charCodeAt(0)-44032,f=c%28;a[k]=String.fromCharCode(44032+c-f+(f?0:21));return a.join("");}
 async function maybeTypo(rt){
@@ -806,9 +912,9 @@ setInterval(updatePresence,60000);setInterval(proactiveTick,15000);updatePresenc
 // ===== 재하의 이모지 반응 =====
 const RX_MAP={"❤":"❤️","❤️":"❤️","♥":"❤️","하트":"❤️","😂":"😂","🔥":"🔥","👍":"👍","😮":"😮"};
 function splitReaction(a){
- let emoji="",awayMin=0,plan=0,call=0;
- const text=String(a).replace(/\[\s*전화걸기\s*\]/g,()=>{call=1;return"";}).replace(/\[\s*예약\s*[:：]\s*(\d+)\s*\]/g,(m,v)=>{plan=Math.min(120,Math.max(3,+v));return"";}).replace(/\[\s*자리비움\s*[:：]\s*(\d+)\s*\]/g,(m,v)=>{awayMin=Math.min(60,Math.max(1,+v));return"";}).replace(/\[\s*반응\s*[:：]\s*([^\]]*?)\s*\]/g,(m,v)=>{if(!emoji&&RX_MAP[v.trim()])emoji=RX_MAP[v.trim()];return"";}).trim();
- return{text,emoji,away:awayMin,plan,call};
+ let emoji="",awayMin=0,plan=0,call=0,dtOk=0,dtNo=0,dtDate="",cond=null;
+ const text=String(a).replace(/\[\s*데이트확정\s*(?:[:：]\s*(\d{4}-\d{2}-\d{2}))?\s*\]/g,(m,v)=>{dtOk=1;dtDate=v||"";return"";}).replace(/\[\s*데이트취소\s*\]/g,()=>{dtNo=1;return"";}).replace(/\[\s*컨디션\s*[:：]\s*([^:：\]]+?)\s*[:：]\s*(\d+)\s*\]/g,(m,t,dn)=>{cond={t:t.trim(),days:Math.min(7,Math.max(1,+dn))};return"";}).replace(/\[\s*전화걸기\s*\]/g,()=>{call=1;return"";}).replace(/\[\s*예약\s*[:：]\s*(\d+)\s*\]/g,(m,v)=>{plan=Math.min(120,Math.max(3,+v));return"";}).replace(/\[\s*자리비움\s*[:：]\s*(\d+)\s*\]/g,(m,v)=>{awayMin=Math.min(60,Math.max(1,+v));return"";}).replace(/\[\s*반응\s*[:：]\s*([^\]]*?)\s*\]/g,(m,v)=>{if(!emoji&&RX_MAP[v.trim()])emoji=RX_MAP[v.trim()];return"";}).trim();
+ return{text,emoji,away:awayMin,plan,call,dtOk,dtNo,dtDate,cond};
 }
 function applyReaction(e){
  const us=history.filter(m=>m.role==="user"),last=us[us.length-1];
@@ -871,11 +977,62 @@ $("memClear").onclick=()=>{
 };
 // ===== 같이 듣기 =====
 const MUS_KEY="dm_music_v1";let mus=safeParse(localStorage.getItem(MUS_KEY),{});
-function musUI(){$("musicBar").classList.toggle("show",!!mus.t);$("musicTxt").textContent=mus.t?"같이 듣는 중 · "+mus.t+" · "+Math.floor((Date.now()-(mus.s||Date.now()))/6e4)+"분":"";}
-function listenCtx(){return mus.t?"지금 사용자는 '"+mus.t+"'을(를) 듣고 있고 재하도 같이 듣는 중이다(듣기 시작한 지 "+fmtAgo(Date.now()-(mus.s||Date.now()))+" 지났고, 지금 나오는 부분에 맞춘 즉석 감상(비트·보컬·분위기)을 대화 사이사이 자주 섞는다. 사용자가 알려준 정보라 소리를 직접 듣진 못한다). 곡을 모르면 웹 검색으로 찾아보고, 재하 취향(90~00년대 힙합·R&B)에 따라 솔직하게 평한다. 미쿠·보컬로이드·애니송 같은 씹덕 노래면 질색하거나 무관심하게 굴되, 구동현이 고른 거면 투덜대며 끝까지 들어준다.":"";}
-$("musicBtn").onclick=()=>{const t=prompt("지금 듣는 노래 (제목 - 가수)\n비우고 확인하면 같이 듣기 종료",mus.t||"");if(t===null)return;mus=t.trim()?{t:t.trim(),c:Date.now(),s:Date.now()}:{};localStorage.setItem(MUS_KEY,JSON.stringify(mus));musUI();if(mus.t&&!busy)sendMessage("🎧 같이 듣자: "+mus.t);};
-$("musicStop").onclick=()=>{mus={};localStorage.setItem(MUS_KEY,"{}");musUI();};
-musUI();setInterval(musUI,30000);
+const mmss=s=>Math.floor(s/60)+":"+String(Math.floor(s%60)).padStart(2,"0"),musSave=()=>{try{localStorage.setItem(MUS_KEY,JSON.stringify(mus));}catch(e){}};
+function musPos(){if(!mus.t)return 0;const p=(mus.base||0)+(mus.run?(Date.now()-(mus.from||Date.now()))/1000:0);return mus.dur?Math.min(p,mus.dur):p;}
+function musCheckEnd(){
+ if(!mus.t)return;const n=Date.now();
+ if(mus.run&&mus.dur&&!mus.est&&musPos()>=mus.dur-0.5){mus.run=false;mus.base=mus.dur;mus.end=1;mus.endAt=n;musSave();}
+ else if((mus.end&&n-(mus.endAt||n)>15*6e4)||(!mus.run&&!mus.end&&n-(mus.pauseAt||n)>30*6e4)){mus={};musSave();}
+}
+function musUI(){
+ $("musicBar").classList.toggle("show",!!mus.t);if(!mus.t){$("musicTxt").textContent="";return;}
+ $("musicTxt").textContent=(mus.end?"곡 끝남 · ":mus.run?"같이 듣는 중 · ":"일시정지 · ")+mus.t+" · "+mmss(musPos())+(mus.dur&&!mus.est?" / "+mmss(mus.dur):"");
+ $("musicPause").textContent=mus.end?"다음 곡":mus.run?"일시정지":"재생";
+}
+function listenCtx(){
+ if(!mus.t)return"";
+ const meta=[mus.artist,mus.genre,mus.year].filter(Boolean).join(", ");
+ return "지금 사용자는 '"+mus.t+"'"+(meta?"("+meta+" — 검색으로 확인한 정보)":"")+"을(를) 듣고 있고 재하도 자기 폰으로 같은 곡을 틀어 같이 듣는 중이다. 재생 위치는 "+mmss(musPos())+(mus.dur&&!mus.est?" / "+mmss(mus.dur):"")+(mus.run?"":"(일시정지 중)")+(mus.end?"(곡이 끝난 상태)":"")+"이다. 재하는 오디오를 분석하는 게 아니므로 가사·구성·악기를 아는 척 구체적으로 말하지 않는다. 확실히 아는 곡만 구체적으로, 모르는 곡은 장르·가수·분위기·취향 수준으로만 평한다(검색은 곡 정보가 꼭 필요할 때만). 감상은 사람처럼 가끔 짧게만 하고, 사용자가 다른 얘기를 하면 노래 얘기를 억지로 꺼내지 않는다. 재하 취향은 90~00년대 힙합·R&B이고, 미쿠·보컬로이드·애니송 같은 씹덕 노래면 질색하거나 무관심하게 굴되 구동현이 고른 거면 투덜대며 끝까지 들어준다.";
+}
+function musExtra(n){
+ if(!mus.t||curBlock())return"";musCheckEnd();if(!mus.t)return"";
+ if(mus.end&&!mus.endPing){mus.endPing=1;musSave();return"방금 '"+mus.t+"'이(가) 끝났다. 재하가 한 줄로 마무리 한마디(짧은 총평이나 '다음 곡 뭐냐')를 한다.";}
+ if(!mus.run||mus.end)return"";
+ const p=musPos(),dur=mus.dur||210;
+ if(!mus.cp){mus.cp=[0.06+Math.random()*0.04,0.36+Math.random()*0.08,0.62+Math.random()*0.08];mus.ci=0;}
+ while(mus.ci<mus.cp.length&&p>mus.cp[mus.ci]*dur+60)mus.ci++;
+ if(mus.ci<mus.cp.length&&p>=mus.cp[mus.ci]*dur&&n-(mus.c||0)>40000){
+  const f=mus.cp[mus.ci++];mus.c=n;musSave();
+  return"같이 듣는 '"+mus.t+"'의 재생 위치가 "+mmss(p)+"("+(f<0.2?"도입부":f<0.5?"중반":"후반")+")쯤이다. 재하가 이 시점의 분위기에 맞춰 한 줄 감상을 툭 던진다. 확실히 모르는 가사·편곡은 아는 척하지 않고, 가사는 인용하지 않는다. 한 줄로.";
+ }
+ return"";
+}
+async function musLookup(q){
+ try{
+  const ac=new AbortController(),to=setTimeout(()=>ac.abort(),4000);
+  const r=await fetch("https://itunes.apple.com/search?media=music&entity=song&limit=5&country=KR&term="+encodeURIComponent(q.replace(/\s*[-–]\s*/g," ")),{signal:ac.signal});clearTimeout(to);
+  const d=await r.json(),nm=s=>String(s||"").toLowerCase().replace(/[^0-9a-z가-힣]/g,""),nq=nm(q);
+  const x=(d.results||[]).find(o=>o.trackTimeMillis&&nm(o.trackName.split(/\s[\(\[]/)[0]).length>=2&&nq.includes(nm(o.trackName.split(/\s[\(\[]/)[0])));
+  return x?{artist:x.artistName,genre:x.primaryGenreName,year:(x.releaseDate||"").slice(0,4),dur:Math.round(x.trackTimeMillis/1000)}:null;
+ }catch(e){return null;}
+}
+async function musPick(){
+ const t=prompt("지금 듣는 노래 (제목 - 가수)\n비우고 확인하면 같이 듣기 종료",mus.end?"":mus.t||"");
+ if(t===null)return;
+ if(!t.trim()){mus={};musSave();musUI();return;}
+ const q=t.trim(),n=Date.now();mus={t:q,s:n,from:n,base:0,run:true,c:n};musSave();musUI();
+ const info=await musLookup(q);
+ if(mus.t===q){if(info){Object.assign(mus,info);}else{mus.dur=0;mus.est=1;}mus.from=mus.from||Date.now();musSave();musUI();}
+ if(!busy)sendMessage("🎧 같이 듣자: "+q);
+}
+$("musicBtn").onclick=musPick;
+$("musicPause").onclick=()=>{if(!mus.t)return;if(mus.end){musPick();return;}if(mus.run){mus.base=musPos();mus.run=false;mus.pauseAt=Date.now();}else{mus.from=Date.now();mus.run=true;}musSave();musUI();};
+$("musicStop").onclick=()=>{mus={};musSave();musUI();};
+
+
+
+
+musUI();setInterval(()=>{musCheckEnd();musUI();},1000);
 // ===== 스토리 =====
 const ST_KEY="dm_story_v1";let story=safeParse(localStorage.getItem(ST_KEY),{});
 function stUI(){document.querySelectorAll(".avatar,.bigavatar").forEach(e=>e.classList.toggle("seen",!(story.txt&&!story.seen)));}

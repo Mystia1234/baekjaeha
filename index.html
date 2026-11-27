@@ -563,10 +563,10 @@ function cleanForSpeech(t){
 }
 const EL_KEY="dm_el_key_v1",EL_VOICE="dm_el_voice_v1",EL_MODEL="dm_el_model_v1";
 async function ttsFetch(text,signal,key){
- const ek=localStorage.getItem(EL_KEY),ev=localStorage.getItem(EL_VOICE);
+ const ek=(localStorage.getItem(EL_KEY)||"").replace(/[^\x21-\x7E]/g,""),ev=(localStorage.getItem(EL_VOICE)||"").replace(/[^\x21-\x7E]/g,"");
  if(!ek||!ev)return ttsOpenAI(text,signal,key);
  const r=await fetch("https://api.elevenlabs.io/v1/text-to-speech/"+encodeURIComponent(ev)+"?output_format=mp3_44100_128",{method:"POST",signal,headers:{"Content-Type":"application/json","xi-api-key":ek},body:JSON.stringify({text,model_id:localStorage.getItem(EL_MODEL)||"eleven_multilingual_v2",voice_settings:{stability:0.4,similarity_boost:0.8,style:0.3,use_speaker_boost:true}})});
- if(!r.ok){const d=await r.json().catch(()=>({}));const em=d.detail&&(d.detail.message||d.detail.status||d.detail);throw new Error(typeof em==="string"?em:"ElevenLabs 오류 ("+r.status+")");}
+ if(!r.ok){const d=await r.json().catch(()=>({}));const em=d.detail&&(d.detail.message||d.detail.status||d.detail);throw new Error((typeof em==="string"?em:"ElevenLabs 오류")+" [HTTP "+r.status+(d.detail&&d.detail.status?" / "+d.detail.status:"")+" · 키 "+ek.length+"자, 앞 "+ek.slice(0,3)+" · Voice ID "+ev.length+"자]");}
  return await r.blob();
 }
 async function ttsOpenAI(text,signal,key){
@@ -663,7 +663,7 @@ $("voiceSel").value=getVoice();
 $("voiceSel").onchange=()=>localStorage.setItem(VOICE_KEY,$("voiceSel").value);
 $("voiceTest").onclick=async()=>{
  const key=$("cfgKey").value.trim()||config.apiKey;
- if(!key){alert("API 키를 먼저 입력해 줘.");return;}
+ if(!key&&!(localStorage.getItem(EL_KEY)&&localStorage.getItem(EL_VOICE))){alert("API 키를 먼저 입력해 줘.");return;}
  localStorage.setItem(VOICE_KEY,$("voiceSel").value);
  const btn=$("voiceTest");btn.disabled=true;btn.textContent="불러오는 중…";
  try{const a=new Audio();a.src=SILENT_WAV;a.play().catch(()=>{});await playBlob(a,await ttsFetch("야 뭐하냐. 전화 받았으면 말을 해야지.",undefined,key));}

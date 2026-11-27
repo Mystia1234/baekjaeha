@@ -1052,6 +1052,17 @@ document.querySelectorAll(".avatar,.bigavatar").forEach(e=>{e.style.cursor="poin
 $("storyClose").onclick=()=>$("storyModal").classList.remove("open");
 $("storySend").onclick=()=>{const v=$("storyReply").value.trim();if(!v||busy)return;$("storyModal").classList.remove("open");pendingReply="스토리: "+story.txt.replace(/\s+/g," ").slice(0,30);sendMessage(v);};
 stUI();setTimeout(refreshStory,8000);setInterval(refreshStory,60000);
+// ===== ElevenLabs 설정 저장/불러오기 =====
+$("elKey").value=localStorage.getItem(EL_KEY)||"";
+$("elVoice").value=localStorage.getItem(EL_VOICE)||"";
+$("elModel").value=localStorage.getItem(EL_MODEL)||"";
+function saveEl(){
+ const set=(k,v)=>{v?localStorage.setItem(k,v):localStorage.removeItem(k);};
+ set(EL_KEY,$("elKey").value.trim());
+ set(EL_VOICE,$("elVoice").value.trim());
+ set(EL_MODEL,$("elModel").value.trim());
+}
+["elKey","elVoice","elModel"].forEach(id=>$(id).addEventListener("input",saveEl));
 applyConfig();renderHistory();
 </script>
 </body>
